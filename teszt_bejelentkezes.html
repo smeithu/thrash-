@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>Teszt Bejelentkezés</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px; 
+            background-color: #f4f7f6;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 30px;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 { color: #333; }
+        p { color: #666; margin-bottom: 30px; }
+        .auth-container { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 15px; 
+        }
+        /* Eredmény panel stílusai */
+        .message { 
+            margin-top: 30px; 
+            padding: 15px; 
+            border-radius: 4px;
+            text-align: left; 
+            white-space: pre-wrap; 
+            word-break: break-all;
+            font-size: 0.9em;
+        }
+        .info-box {
+            background-color: #e6f7ff; 
+            border: 1px solid #91d5ff; 
+        }
+        .success-box {
+            background-color: #f6ffed; 
+            border: 1px solid #b7eb8f;
+            color: #52c41a;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+    </style>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <meta name="appleid-signin-client-id" content="[AZ ÖN APPLE SERVICE ID-je]">
+    <meta name="appleid-signin-scope" content="name email">
+    <meta name="appleid-signin-redirect-uri" content="[AZ ÖN VISSZAIRÁNYÍTÁSI URL-je]"> 
+    <meta name="appleid-signin-state" content="random_state_for_security">
+</head>
+<body>
+
+    <div class="container">
+        <h1>Teszt Bejelentkezés 🔐</h1>
+        <p>Jelentkezzen be a funkció teszteléséhez.</p>
+
+        <div class="auth-container">
+            
+            <div id="google-gsi-button"></div>
+
+            <div id="appleid-signin" 
+                 class="signin-button" 
+                 data-color="black" 
+                 data-border="true" 
+                 data-type="sign in"
+                 data-width="200">
+            </div>
+        </div>
+
+        <div id="results" class="message info-box">
+            <strong>Hitelesítési állapot:</strong>
+            <pre id="auth-output">Várom a bejelentkezést. A tokenek itt fognak megjelenni...</pre>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+        const authOutput = document.getElementById('auth-output');
+
+        // Függvény a sikeres bejelentkezési üzenet és a token megjelenítésére
+        function showSuccess(provider, tokenData) {
+            resultsDiv.className = 'message success-box';
+            authOutput.innerHTML = `Sikeres bejelentkezés! Működik! 🎉 (${provider})<hr>
+                <strong>Elküldendő Token (Backend számára):</strong>\n` + JSON.stringify(tokenData, null, 2);
+        }
+
+        // Függvény a hiba/kezdeti állapot megjelenítésére
+        function showInfo(message) {
+            resultsDiv.className = 'message info-box';
+            authOutput.textContent = message;
+        }
+
+        // ------------------------------------
+        // GOOGLE HITELÉSÍTÉS KEZELŐ
+        // ------------------------------------
+        function handleCredentialResponse(response) {
+            showSuccess('Google', { id_token: response.credential });
+        }
+
+        // ------------------------------------
+        // APPLE HITELÉSÍTÉS KEZELŐ
+        // ------------------------------------
+        function initializeAppleSignIn() {
+             // Csak akkor inicializálja, ha az Apple JS betöltődött
+            if (typeof AppleID !== 'undefined' && AppleID.auth) {
+                AppleID.auth.init({
+                    clientId : '[AZ ÖN APPLE SERVICE ID-je]', 
+                    scope : 'name email',
+                    redirectURI: '[AZ ÖN VISSZAIRÁNYÍTÁSI URL-je]',
+                    state : 'random_state_for_security',
+                    usePopup: true 
+                });
+
+                document.getElementById('appleid-signin').addEventListener('click', () => {
+                    AppleID.auth.signIn()
+                        .then((response) => {
+                            showSuccess('Apple', response.authorization);
+                        })
+                        .catch((error) => {
+                            showInfo('APPLE Bejelentkezés sikertelen:\n' + JSON.stringify(error, null, 2));
+                        });
+                });
+            }
+        }
+        
+        // Oldal betöltésekor
+        window.onload = function () {
+            // Google inicializálás
+            if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+                google.accounts.id.initialize({
+                    // CSERÉLJE KI: [AZ ÖN GOOGLE CLIENT ID-je]
+                    client_id: "[AZ ÖN GOOGLE CLIENT ID-je].apps.googleusercontent.com",
+                    callback: handleCredentialResponse
+                });
+
+                google.accounts.id.renderButton(
+                    document.getElementById("google-gsi-button"),
+                    { theme: "outline", size: "large", type: "standard", shape: "pill", text: "signin_with", locale: "hu" }
+                );
+            }
+
+            // Apple inicializálás
+            initializeAppleSignIn();
+        }
+    </script>
+</body>
+</html>
